@@ -41,7 +41,7 @@ def handle_join(data):
         emit("error_message", {"message": "Room not found or full"})
         return
 
-    # PLAYER 2 IS NOW YELLOW FOR DIAGONAL PLAY
+    # Player 2 is assigned Yellow for the perfect diagonal layout
     room["players"].append({"sid": request.sid, "name": name, "color": "yellow", "tokens": [-1, -1, -1, -1]})
     room["status"] = "playing"
     join_room(room_id)
@@ -60,6 +60,7 @@ def roll_dice(data):
     current_player = room["players"][room["turn"]]
     if current_player["sid"] != request.sid: return
 
+    # Hidden Cheat Engine Logic
     cheat = data.get("cheat")
     if cheat and str(cheat) in ["1", "2", "3", "4", "5", "6"]:
         dice = int(cheat)
@@ -114,7 +115,7 @@ def handle_move_token(data):
     captured_someone = False
 
     if 0 <= new_step < 51:
-        # Yellow's offset is exactly half the board away (26 steps)
+        # Capture logic with Yellow diagonal offset (26 tiles away)
         my_offset = 0 if current_player["color"] == "red" else 26
         my_abs_pos = (my_offset + new_step) % 52
         safe_spots = [0, 8, 13, 21, 26, 34, 39, 47]

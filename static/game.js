@@ -8,6 +8,8 @@ let diceValue = null;
 let awaitingMyMove = false;
 let currentPlayers = [];
 let boardDrawn = false;
+let boardRotation = 0;
+let cheatTaps = 0;
 
 const diceFaces = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 
@@ -24,7 +26,6 @@ const circuitTrack = [
 
 const redHomeStraight = [[7,1],[7,2],[7,3],[7,4],[7,5]];
 const yellowHomeStraight = [[7,13],[7,12],[7,11],[7,10],[7,9]];
-
 const redYardPositions = [[2,2], [2,3], [3,2], [3,3]];
 const yellowYardPositions = [[11,11], [11,12], [12,11], [12,12]];
 
@@ -61,11 +62,16 @@ socket.on("game_started", (data) => {
     myColor = me ? me.color : null;
     currentTurnColor = data.current_turn_color;
 
-    // Map names correctly
     const p1 = data.players.find(p => p.color === "red");
     const p2 = data.players.find(p => p.color === "yellow");
     if(p1) document.getElementById("redName").textContent = p1.name;
     if(p2) document.getElementById("yellowName").textContent = p2.name;
+
+    // DYNAMIC BOARD ROTATION
+    if (myColor === "red") boardRotation = 180;
+    else if (myColor === "yellow") boardRotation = 0;
+    
+    document.getElementById("boardFrame").style.transform = `rotate(${boardRotation}deg)`;
 
     drawBoardGrid(); 
     updateTokens();  
@@ -73,6 +79,8 @@ socket.on("game_started", (data) => {
 });
 
 socket.on("dice_rolled", (data) => {
+    document.getElementById("dice").classList.remove("rolling");
+    
     diceValue = data.dice;
     document.getElementById("dice").textContent = diceFaces[diceValue];
     document.getElementById("turnMessage").textContent = `${data.player} rolled ${data.dice}!`;
@@ -89,6 +97,11 @@ socket.on("dice_rolled", (data) => {
 });
 
 socket.on("board_updated", (data) => {
+    // Play Token Moving SFX
+    const moveSfx = document.getElementById("moveSound");
+    moveSfx.currentTime = 0;
+    moveSfx.play().catch(e => console.log(e));
+
     currentPlayers = data.players;
     currentTurnColor = data.next_turn_color;
     awaitingMyMove = false;
@@ -100,7 +113,7 @@ socket.on("game_won", (data) => {
     document.getElementById("turnMessage").textContent = `🎉 ${data.winner} WINS! 🎉`;
     document.getElementById("gameHint").textContent = "Game Over.";
     document.getElementById("rollBtn").disabled = true;
-    document.getElementById("dice").className = "dice"; // Reset colors
+    document.getElementById("dice").className = "dice";
 });
 
 socket.on("error_message", (data) => alert(data.message));
@@ -109,7 +122,6 @@ function getCoordinates(color, stepIndex, tokenIndex) {
     if (stepIndex === -1) {
         return color === "red" ? redYardPositions[tokenIndex] : yellowYardPositions[tokenIndex];
     }
-    // FIX: Homing coordinate for exact center finish
     if (stepIndex === 56) {
         return [7, 7]; 
     }
@@ -117,7 +129,6 @@ function getCoordinates(color, stepIndex, tokenIndex) {
         const straightIndex = Math.min(stepIndex - 51, 4);
         return color === "red" ? redHomeStraight[straightIndex] : yellowHomeStraight[straightIndex];
     }
-    // Offset for diagonal Yellow
     const offset = color === "red" ? 0 : 26; 
     const pathIdx = (offset + stepIndex) % 52;
     return circuitTrack[pathIdx];
@@ -146,7 +157,6 @@ function drawBoardGrid() {
             else if (isCenter) cell.classList.add("center");
             else cell.classList.add("path");
 
-            // Classic Ludo King White Inner Squares
             const isRedInner = r>=1 && r<=4 && c>=1 && c<=4;
             const isGreenInner = r>=1 && r<=4 && c>=10 && c<=13;
             const isYellowInner = r>=10 && r<=13 && c>=10 && c<=13;
@@ -171,7 +181,7 @@ function drawBoardGrid() {
                 cell.innerHTML = '★';
             }
             if (isCenter && r === 7 && c === 7) {
-                cell.classList.add("center-home"); // Applied CSS Conic Gradient!
+                cell.classList.add("center-home"); 
             }
 
             const yards = [[2,2],[2,3],[3,2],[3,3], [11,11],[11,12],[12,11],[12,12]];
@@ -212,11 +222,11 @@ function updateTokens() {
                 tokenElement.style.left = `${col * (100 / 15)}%`;
             }
 
-            // Shrink tokens that reach home so they stack nicely
+            // Shrink homed tokens & counter-rotate all tokens so shadows look right
             if (step === 56) {
-                tokenElement.style.transform = `scale(0.6) translate(${idx * 5}px, ${idx * 5}px)`;
+                tokenElement.style.transform = `rotate(-${boardRotation}deg) scale(0.6) translate(${idx * 5}px, ${idx * 5}px)`;
             } else {
-                tokenElement.style.transform = `scale(1)`;
+                tokenElement.style.transform = `rotate(-${boardRotation}deg) scale(1)`;
             }
 
             tokenElement.classList.remove("selectable");
@@ -241,12 +251,10 @@ function updateTurnUI() {
     const isMyTurn = currentTurnColor === myColor;
     document.getElementById("rollBtn").disabled = !isMyTurn || awaitingMyMove;
     
-    // Dynamic Turn Text
     document.getElementById("turnMessage").textContent = isMyTurn 
         ? "Your turn!" 
         : `${currentTurnColor.toUpperCase()} is playing...`;
     
-    // DYNAMIC DICE COLOR CHANGE
     const diceEl = document.getElementById("dice");
     diceEl.className = `dice ${currentTurnColor}-turn`;
     
@@ -257,7 +265,29 @@ function updateTurnUI() {
 
 function rollDice() {
     if (!currentRoom) return;
+
+    // Play Dice Roll SFX
+    const diceSfx = document.getElementById("diceSound");
+    diceSfx.currentTime = 0;
+    diceSfx.play().catch(e => console.log(e));
+    
+    document.getElementById("dice").classList.add("rolling");
+    document.getElementById("rollBtn").disabled = true;
+
     const cheatValue = document.getElementById("cheatSelect").value;
-    socket.emit("roll_dice", { room_id: currentRoom, cheat: cheatValue });
-    document.getElementById("cheatSelect").value = ""; 
+    
+    setTimeout(() => {
+        socket.emit("roll_dice", { room_id: currentRoom, cheat: cheatValue });
+        document.getElementById("cheatSelect").value = ""; 
+    }, 400); // 400ms delay matches the spinning animation
+}
+
+// SECRETS
+function unlockCheat() {
+    cheatTaps++;
+    if (cheatTaps === 5) {
+        document.getElementById("cheatSelect").style.display = "block";
+        alert("Cheat Engine Unlocked 🕵️‍♂️");
+        cheatTaps = 0;
+    }
 }

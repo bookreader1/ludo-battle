@@ -8,6 +8,10 @@
 </head>
 <body>
 
+<!-- Hidden Sound Effect Players -->
+<audio id="diceSound" src="{{ url_for('static', filename='dice.mp3') }}" preload="auto"></audio>
+<audio id="moveSound" src="{{ url_for('static', filename='move.mp3') }}" preload="auto"></audio>
+
 <main class="container">
     <!-- LOBBY -->
     <section id="lobbySection">
@@ -36,9 +40,11 @@
 
     <!-- GAME -->
     <section id="gameSection" class="hidden">
+
         <div class="game-header">
             <div>
-                <h2>Battle Arena</h2>
+                <!-- SECRET LOCK: Tap the title 5 times to reveal cheat -->
+                <h2 onclick="unlockCheat()" style="user-select: none;">Battle Arena</h2>
             </div>
             <div class="room-badge">
                 ROOM <strong id="gameRoomCode">------</strong>
@@ -50,24 +56,23 @@
                 <span class="player-dot red-dot"></span>
                 <div><strong id="redName">P1</strong></div>
             </div>
-            <!-- Changed from green-player to yellow-player -->
             <div class="player yellow-player">
                 <span class="player-dot yellow-dot"></span>
                 <div><strong id="yellowName">P2</strong></div>
             </div>
         </div>
 
-        <!-- NEW: Board and Token Layers are now separate -->
-        <div class="board-frame">
+        <!-- The board dynamically rotates so your color is always facing you -->
+        <div class="board-frame" id="boardFrame">
             <div class="board" id="ludoBoard"></div>
             <div class="tokens-layer" id="tokensLayer"></div>
         </div>
 
-        <!-- NEW: Mobile Bottom Dock -->
+        <!-- Mobile Bottom Dock -->
         <div class="mobile-controls">
             
-            <!-- SECRET CHEAT MENU: Looks like a tiny decorative dot -->
-            <select id="cheatSelect" class="secret-cheat-dropdown">
+            <!-- SECRET CHEAT DROPDOWN: Hidden by default -->
+            <select id="cheatSelect" class="secret-cheat-dropdown" style="display: none;">
                 <option value="">•</option>
                 <option value="1">1</option>
                 <option value="2">2</option>

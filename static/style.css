@@ -6,7 +6,7 @@ body {
     color: #f5f7ff;
     min-height: 100vh;
     padding: 15px;
-    padding-bottom: 150px; /* Space for the bottom dock */
+    padding-bottom: 150px; 
 }
 
 .container { width: 100%; max-width: 500px; margin: auto; text-align: center; }
@@ -45,7 +45,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 
 /* GAME HEADER */
 .game-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; text-align: left; }
-.game-header h2 { font-size: 22px; }
+.game-header h2 { font-size: 22px; cursor: pointer; }
 .room-badge { background: #18243a; padding: 10px; border-radius: 9px; font-size: 10px; color: #8993ad; }
 .room-badge strong { color: #ffc857; margin-left: 5px; }
 
@@ -55,8 +55,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .player strong { font-size: 14px; }
 .player-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
 .red-dot { background: #ff4d64; box-shadow: 0 0 10px #ff4d64; }
-.green-dot { background: #36e5a0; box-shadow: 0 0 10px #36e5a0; }
-.player.active { border-color: #ffc857; }
+.yellow-dot { background: #ffd45a; box-shadow: 0 0 10px #ffd45a; }
 
 /* BOARD & TOKENS LAYER */
 .board-frame {
@@ -69,6 +68,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
     padding: 8px;
     box-shadow: 0 10px 40px #0008;
     margin: 0 auto;
+    transition: transform 1.2s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .board {
@@ -82,10 +82,9 @@ button:disabled { opacity: .4; cursor: not-allowed; }
     overflow: hidden;
 }
 
-/* Tokens layer floats exactly over the 15x15 grid */
 .tokens-layer {
     position: absolute;
-    top: 8px; left: 8px; /* Match board padding */
+    top: 8px; left: 8px;
     width: calc(100% - 16px);
     height: calc(100% - 16px);
     pointer-events: none;
@@ -109,18 +108,30 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .start-yellow { background: #ffd45a !important; }
 
 .safe-star { color: #aab4c7; font-size: clamp(10px, 3vw, 18px); }
-.yard-spot { background: #ffffff33; border-radius: 50%; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
 
-/* --- SMOOTH GLIDING TOKENS --- */
+/* Classic Ludo Aesthetic Fixes */
+.inner-white { background: #f5f6fa !important; border: 1px solid #e5e9f1; }
+.yard-spot { background: #e5e9f1; border-radius: 50%; box-shadow: inset 0 0 5px rgba(0,0,0,0.2); }
+.center-home {
+    background: conic-gradient(
+        #27d99b 315deg 360deg, 
+        #27d99b 0deg 45deg, 
+        #ffd45a 45deg 135deg, 
+        #55a8ff 135deg 225deg, 
+        #ff4965 225deg 315deg
+    ) !important;
+    border-radius: 2px;
+}
+
+/* SMOOTH GLIDING TOKENS */
 .token {
     position: absolute;
-    width: 6.666%; /* 100% / 15 columns */
-    height: 6.666%; /* 100% / 15 rows */
+    width: 6.666%; 
+    height: 6.666%; 
     display: flex;
     justify-content: center;
     align-items: center;
     pointer-events: auto;
-    /* CSS transition for smooth movement! */
     transition: top 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
     z-index: 10;
 }
@@ -135,24 +146,17 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 }
 
 .red-token::after { background: #ff4965; }
-.green-token::after { background: #27d99b; }
+.yellow-token::after { background: #ffd45a; border-color: #333; }
 
-.token.selectable {
-    cursor: pointer;
-    z-index: 20;
-}
-
-.token.selectable::after {
-    animation: pulse 0.8s infinite alternate;
-}
+.token.selectable { cursor: pointer; z-index: 20; }
+.token.selectable::after { animation: pulse 0.8s infinite alternate; }
 
 @keyframes pulse {
     0% { transform: scale(1); box-shadow: 0 0 5px #ffc857, inset 0 0 2px #000; }
     100% { transform: scale(1.2); box-shadow: 0 0 20px #ffc857, inset 0 0 5px #000; border-color: #ffc857; }
 }
 
-
-/* --- MOBILE BOTTOM DOCK --- */
+/* MOBILE BOTTOM DOCK */
 .mobile-controls {
     position: fixed;
     bottom: 0; left: 0; right: 0;
@@ -186,8 +190,22 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 }
 
 #rollBtn { flex-grow: 1; height: 60px; font-size: 18px; }
-
 .game-hint { color: #8993ad; font-size: 13px; margin-top: 12px; }
+
+/* 3D Dice Animations & Lights */
+@keyframes diceSpin {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.15); box-shadow: 0 10px 25px rgba(255, 200, 87, 0.6); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+.dice.rolling {
+    animation: diceSpin 0.4s ease-in-out infinite;
+    color: transparent !important; 
+}
+
+.dice.red-turn { border: 3px solid #ff4965; color: #ff4965; box-shadow: 0 0 20px rgba(255, 73, 101, 0.4); background: #171e30; }
+.dice.yellow-turn { border: 3px solid #ffd45a; color: #ffd45a; box-shadow: 0 0 20px rgba(255, 212, 90, 0.4); background: #171e30; }
 
 /* SECRET CHEAT DROPDOWN */
 .secret-cheat-dropdown {
@@ -196,50 +214,6 @@ button:disabled { opacity: .4; cursor: not-allowed; }
     background: transparent; color: #555;
     border: none; outline: none;
     font-size: 12px; width: 30px; height: 30px;
-    cursor: pointer; opacity: 0.3; /* Hides it from players */
+    cursor: pointer; opacity: 0.3;
 }
 .secret-cheat-dropdown:focus { opacity: 1; color: #ffc857; background: #000; }
-
-
-
-/* Update Player Dots for Yellow */
-.yellow-dot { background: #ffd45a; box-shadow: 0 0 10px #ffd45a; }
-.yellow-token::after { background: #ffd45a; border-color: #333; }
-
-/* Ludo King Inner White Boxes & Yards */
-.inner-white {
-    background: #f5f6fa !important;
-    border: 1px solid #e5e9f1;
-}
-.yard-spot {
-    background: #e5e9f1; /* Fills in the circle gracefully inside white box */
-    border-radius: 50%; 
-    box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
-}
-
-/* Beautiful Conic Gradient Center Home */
-.center-home {
-    background: conic-gradient(
-        #27d99b 315deg 360deg, 
-        #27d99b 0deg 45deg,    /* Top: Green */
-        #ffd45a 45deg 135deg,  /* Right: Yellow */
-        #55a8ff 135deg 225deg, /* Bottom: Blue */
-        #ff4965 225deg 315deg  /* Left: Red */
-    ) !important;
-    border-radius: 2px;
-}
-
-/* DYNAMIC DICE COLORS */
-.dice.red-turn {
-    border: 3px solid #ff4965;
-    color: #ff4965;
-    box-shadow: 0 0 20px rgba(255, 73, 101, 0.4);
-    background: #171e30;
-}
-
-.dice.yellow-turn {
-    border: 3px solid #ffd45a;
-    color: #ffd45a;
-    box-shadow: 0 0 20px rgba(255, 212, 90, 0.4);
-    background: #171e30;
-}
