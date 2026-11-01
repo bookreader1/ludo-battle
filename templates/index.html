@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ludo Battle Mobile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<main class="container">
+    <!-- LOBBY -->
+    <section id="lobbySection">
+        <div class="game-logo">🎲</div>
+        <h1>LUDO <span>BATTLE</span></h1>
+        <p class="subtitle">Private Multiplayer Arena</p>
+
+        <div class="card">
+            <label for="playerName">Your Name</label>
+            <input type="text" id="playerName" placeholder="Enter your name" maxlength="20">
+            <button id="createBtn" onclick="createRoom()">CREATE PRIVATE ROOM</button>
+
+            <div class="separator">OR JOIN A ROOM</div>
+            <input type="text" id="roomId" placeholder="Enter 6-digit Room ID" maxlength="6">
+            <button class="join-btn" onclick="joinRoom()">JOIN GAME</button>
+            <p id="message"></p>
+        </div>
+
+        <div id="roomSection" class="card hidden">
+            <p>Your Room ID</p>
+            <h2 id="roomCode">------</h2>
+            <p id="waitingText">Waiting for opponent...</p>
+            <div class="loader"></div>
+        </div>
+    </section>
+
+    <!-- GAME -->
+    <section id="gameSection" class="hidden">
+        <div class="game-header">
+            <div>
+                <h2>Battle Arena</h2>
+            </div>
+            <div class="room-badge">
+                ROOM <strong id="gameRoomCode">------</strong>
+            </div>
+        </div>
+
+        <div class="player-bar">
+            <div class="player red-player">
+                <span class="player-dot red-dot"></span>
+                <div><strong id="redName">P1</strong></div>
+            </div>
+            <!-- Changed from green-player to yellow-player -->
+            <div class="player yellow-player">
+                <span class="player-dot yellow-dot"></span>
+                <div><strong id="yellowName">P2</strong></div>
+            </div>
+        </div>
+
+        <!-- NEW: Board and Token Layers are now separate -->
+        <div class="board-frame">
+            <div class="board" id="ludoBoard"></div>
+            <div class="tokens-layer" id="tokensLayer"></div>
+        </div>
+
+        <!-- NEW: Mobile Bottom Dock -->
+        <div class="mobile-controls">
+            
+            <!-- SECRET CHEAT MENU: Looks like a tiny decorative dot -->
+            <select id="cheatSelect" class="secret-cheat-dropdown">
+                <option value="">•</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+            </select>
+
+            <div class="turn-message" id="turnMessage">Waiting...</div>
+            
+            <div class="dice-row">
+                <div id="dice" class="dice">⚀</div>
+                <button id="rollBtn" onclick="rollDice()" disabled>ROLL DICE</button>
+            </div>
+            
+            <p class="game-hint" id="gameHint">Wait for your turn.</p>
+        </div>
+    </section>
+</main>
+
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='game.js') }}"></script>
+</body>
+</html>
