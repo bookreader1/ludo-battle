@@ -87,14 +87,47 @@ socket.on("dice_rolled", (data) => {
 
     if (data.must_move && data.current_turn_color === myColor) {
         awaitingMyMove = true;
-        document.getElementById("gameHint").textContent = "Select a glowing token.";
-        updateTokens(); 
+        
+        // --- NEW AUTO-MOVE LOGIC ---
+        const me = currentPlayers.find(p => p.color === myColor);
+        let movableTokens = [];
+        
+        // Find exactly how many tokens are legally allowed to move
+        me.tokens.forEach((step, idx) => {
+            if (canTokenMove(step, diceValue)) {
+                movableTokens.push(idx);
+            }
+        });
+
+        if (movableTokens.length === 1) {
+            // Only 1 token can move! Tell the user and auto-move it after a brief delay
+            document.getElementById("gameHint").textContent = "Auto-moving token...";
+            updateTokens(); 
+            
+            setTimeout(() => {
+                selectToken(movableTokens[0]);
+            }, 700); // 700ms delay so they can see the dice number first
+            
+        } else {
+            // More than 1 token can move, so the player must choose
+            document.getElementById("gameHint").textContent = "Select a glowing token.";
+            updateTokens(); 
+        }
+        // ---------------------------
+        
     } else {
         awaitingMyMove = false;
         currentTurnColor = data.current_turn_color;
         updateTurnUI();
     }
 });
+
+// Update this function to prevent double-clicks during the auto-move delay
+function selectToken(tokenIndex) {
+    if (!awaitingMyMove) return;
+    awaitingMyMove = false; // Lock immediately to prevent double-firing
+    socket.emit("move_token", { room_id: currentRoom, token_index: tokenIndex });
+}
 
 socket.on("board_updated", (data) => {
     // Play Token Moving SFX
