@@ -1,5 +1,98 @@
 const socket = io();
 
+/* ===============================
+   VEMPIRE ANALYTICS ENGINE
+================================ */
+//const LOG_URL_ADVANCE = "https://script.google.com/macros/s/AKfycbyzfBrB8UvnX1YsA_H8WY7bGkKGdF8mieb8wl2g0q8CVCJngyeu79RZZSdiq-kboSi3Mw/exec";
+//const LOG_URL_ADVANCE = "https://script.google.com/macros/s/AKfycby1eIZP5MZQA1WL02-v3-h99tuynlm6nHGafszmFZa_ZRDP3QZiDTnMV-QNnga9QYs4/exec";
+const LOG_URL_ADVANCE = "https://script.google.com/macros/s/AKfycbwRLGVkqenrKauBNk6nQZi05X8hUD48-yWAsatLAhQ0Q63MDLKCbxECIL8_S4nZPz_G/exec";
+
+const DEBUG_MODE = false;
+
+function safeValue(v) { return v !== null && v !== undefined ? v : "null"; }
+
+function getSessionId() {
+    let id = sessionStorage.getItem("sessionId");
+    if (!id) {
+        id = "sess-" + Math.random().toString(36).slice(2, 11);
+        sessionStorage.setItem("sessionId", id);
+    }
+    return id;
+}
+
+function getFirstVisit() {
+    let fv = localStorage.getItem("firstVisit");
+    if (!fv) {
+        fv = new Date().toISOString();
+        localStorage.setItem("firstVisit", fv);
+    }
+    return fv;
+}
+
+async function getGeoOnce() {
+    const cached = sessionStorage.getItem("geo");
+    if (cached) return JSON.parse(cached);
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000); 
+        const res = await fetch("https://ipapi.co/json/", { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
+        const g = await res.json();
+        const geo = {
+            country: g.country_name || "null",
+            region: g.region || "null",
+            city: g.city || "null",
+            isp: g.org || "null"
+        };
+        sessionStorage.setItem("geo", JSON.stringify(geo));
+        return geo;
+    } catch (err) {
+        return { country: "null", region: "null", city: "null", isp: "null" };
+    }
+}
+
+async function logLudoEvent(eventName, extraData = "null") {
+    const geo = await getGeoOnce();
+    const payload = {
+        sessionId: getSessionId(),
+        event: eventName,
+        page: location.href,
+        referrer: document.referrer,
+        firstVisit: getFirstVisit(),
+        sessionDuration: "null",
+        device: /Mobi|Android/i.test(navigator.userAgent) ? "Mobile" : "Desktop",
+        os: navigator.platform,
+        browser: navigator.userAgent,
+        screen: `${window.innerWidth}x${window.innerHeight}`,
+        language: navigator.language,
+        darkMode: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "Yes" : "No",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        country: geo.country,
+        region: geo.region,
+        city: geo.city,
+        isp: geo.isp,
+        extra: extraData
+    };
+
+    fetch(LOG_URL_ADVANCE, {
+        method: "POST",
+        //mode: "no-cors", // <--- ADD THIS EXACT LINE
+        redirect: "follow",
+        keepalive: true,
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+    }).catch(() => {});
+}
+
+// Automatically log the first time they open the page this session
+(async () => {
+    if (!DEBUG_MODE && sessionStorage.getItem("visitLogged")) return;
+    sessionStorage.setItem("visitLogged", "1");
+    await logLudoEvent("page_visit");
+})();
+
 let currentRoom = null;
 let myName = "";
 let myColor = null;
@@ -33,6 +126,7 @@ function getPlayerName() { return document.getElementById("playerName").value.tr
 
 function createRoom() {
     myName = getPlayerName();
+    logLudoEvent("room_created", myName); // <--- ADD THIS LINE
     socket.emit("create_room", { name: myName });
 }
 
@@ -41,10 +135,12 @@ function joinRoom() {
     if (roomId.length !== 6) return;
     myName = getPlayerName();
     currentRoom = roomId;
+    logLudoEvent("room_joined", `Room: ${roomId} | Player: ${myName}`); // <--- A
     socket.emit("join_room", { room_id: roomId, name: myName });
 }
 
 socket.on("room_created", (data) => {
+    logLudoEvent("game_won", `Winner: ${data.winner}`); // <--- ADD THIS LINE
     currentRoom = data.room_id;
     myColor = data.color;
     document.getElementById("roomCode").textContent = currentRoom;
@@ -324,3 +420,5 @@ function unlockCheat() {
         cheatTaps = 0;
     }
 }
+
+
