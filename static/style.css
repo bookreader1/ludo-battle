@@ -134,6 +134,9 @@ button:disabled { opacity: .4; cursor: not-allowed; }
     pointer-events: auto;
     transition: top 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
     z-index: 10;
+    /* NEW: Forces mobile GPU hardware acceleration */
+    will-change: transform, top, left; 
+    transform: translateZ(0);
 }
 
 .token::after {

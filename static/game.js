@@ -438,6 +438,7 @@ function buildChatMenu() {
         let filename = `yaya (${i}).png`;
         img.src = `/static/Ya-Ya/${filename}`; 
         img.className = "menu-sticker";
+        img.loading = "lazy";
         
         // Pass the subfolder path in the sticker message
         img.onclick = () => sendQuickChat(`STICKER:Ya-Ya/${filename}`);
