@@ -3,10 +3,7 @@ const socket = io();
 /* ===============================
    VEMPIRE ANALYTICS ENGINE
 ================================ */
-//const LOG_URL_ADVANCE = "https://script.google.com/macros/s/AKfycbyzfBrB8UvnX1YsA_H8WY7bGkKGdF8mieb8wl2g0q8CVCJngyeu79RZZSdiq-kboSi3Mw/exec";
-//const LOG_URL_ADVANCE = "https://script.google.com/macros/s/AKfycby1eIZP5MZQA1WL02-v3-h99tuynlm6nHGafszmFZa_ZRDP3QZiDTnMV-QNnga9QYs4/exec";
 const LOG_URL_ADVANCE = "https://script.google.com/macros/s/AKfycbwRLGVkqenrKauBNk6nQZi05X8hUD48-yWAsatLAhQ0Q63MDLKCbxECIL8_S4nZPz_G/exec";
-
 const DEBUG_MODE = false;
 
 function safeValue(v) { return v !== null && v !== undefined ? v : "null"; }
@@ -78,7 +75,6 @@ async function logLudoEvent(eventName, extraData = "null") {
 
     fetch(LOG_URL_ADVANCE, {
         method: "POST",
-        //mode: "no-cors", // <--- ADD THIS EXACT LINE
         redirect: "follow",
         keepalive: true,
         headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -93,6 +89,9 @@ async function logLudoEvent(eventName, extraData = "null") {
     await logLudoEvent("page_visit");
 })();
 
+/* ===============================
+   GAME STATE & LOGIC
+================================ */
 let currentRoom = null;
 let myName = "";
 let myColor = null;
@@ -126,7 +125,7 @@ function getPlayerName() { return document.getElementById("playerName").value.tr
 
 function createRoom() {
     myName = getPlayerName();
-    logLudoEvent("room_created", myName); // <--- ADD THIS LINE
+    logLudoEvent("room_created", myName);
     socket.emit("create_room", { name: myName });
 }
 
@@ -135,12 +134,11 @@ function joinRoom() {
     if (roomId.length !== 6) return;
     myName = getPlayerName();
     currentRoom = roomId;
-    logLudoEvent("room_joined", `Room: ${roomId} | Player: ${myName}`); // <--- A
+    logLudoEvent("room_joined", `Room: ${roomId} | Player: ${myName}`);
     socket.emit("join_room", { room_id: roomId, name: myName });
 }
 
 socket.on("room_created", (data) => {
-    logLudoEvent("game_won", `Winner: ${data.winner}`); // <--- ADD THIS LINE
     currentRoom = data.room_id;
     myColor = data.color;
     document.getElementById("roomCode").textContent = currentRoom;
@@ -174,51 +172,50 @@ socket.on("game_started", (data) => {
     updateTurnUI();
 });
 
-socket.on("dice_rolled", (data) => {
-    document.getElementById("dice").classList.remove("rolling");
-    
-    diceValue = data.dice;
-    document.getElementById("dice").textContent = diceFaces[diceValue];
-    document.getElementById("turnMessage").textContent = `${data.player} rolled ${data.dice}!`;
+socket.on("dice_rolled", async (data) => {
+    // Play the dice sound for EVERYONE
+    const diceAudio = document.getElementById("diceSound");
+    diceAudio.currentTime = 0;
+    diceAudio.play().catch(() => {}); 
 
-    if (data.must_move && data.current_turn_color === myColor) {
-        awaitingMyMove = true;
+    const diceBtn = document.getElementById("dice");
+    diceBtn.classList.add("rolling");
+    document.getElementById("turnMessage").textContent = `🎲 ${data.player} is rolling...`;
+    document.getElementById("rollBtn").disabled = true;
+
+    // Force everyone to watch the animation for 600ms before showing the result
+    setTimeout(() => {
+        diceBtn.classList.remove("rolling");
         
-        // --- NEW AUTO-MOVE LOGIC ---
-        const me = currentPlayers.find(p => p.color === myColor);
-        let movableTokens = [];
-        
-        // Find exactly how many tokens are legally allowed to move
-        me.tokens.forEach((step, idx) => {
-            if (canTokenMove(step, diceValue)) {
-                movableTokens.push(idx);
+        diceValue = data.dice;
+        diceBtn.textContent = diceFaces[diceValue];
+        document.getElementById("turnMessage").textContent = `🔥 ${data.player} got a ${data.dice}!`;
+
+        if (data.must_move && data.current_turn_color === myColor) {
+            awaitingMyMove = true;
+            const me = currentPlayers.find(p => p.color === myColor);
+            let movableTokens = [];
+            
+            me.tokens.forEach((step, idx) => {
+                if (canTokenMove(step, diceValue)) movableTokens.push(idx);
+            });
+
+            if (movableTokens.length === 1) {
+                document.getElementById("gameHint").textContent = "Auto-moving token...";
+                updateTokens(); 
+                setTimeout(() => { selectToken(movableTokens[0]); }, 600);
+            } else {
+                document.getElementById("gameHint").textContent = "Select a glowing token.";
+                updateTokens(); 
             }
-        });
-
-        if (movableTokens.length === 1) {
-            // Only 1 token can move! Tell the user and auto-move it after a brief delay
-            document.getElementById("gameHint").textContent = "Auto-moving token...";
-            updateTokens(); 
-            
-            setTimeout(() => {
-                selectToken(movableTokens[0]);
-            }, 700); // 700ms delay so they can see the dice number first
-            
         } else {
-            // More than 1 token can move, so the player must choose
-            document.getElementById("gameHint").textContent = "Select a glowing token.";
-            updateTokens(); 
+            awaitingMyMove = false;
+            currentTurnColor = data.current_turn_color;
+            updateTurnUI();
         }
-        // ---------------------------
-        
-    } else {
-        awaitingMyMove = false;
-        currentTurnColor = data.current_turn_color;
-        updateTurnUI();
-    }
+    }, 600); 
 });
 
-// Update this function to prevent double-clicks during the auto-move delay
 function selectToken(tokenIndex) {
     if (!awaitingMyMove) return;
     awaitingMyMove = false; // Lock immediately to prevent double-firing
@@ -239,6 +236,7 @@ socket.on("board_updated", (data) => {
 });
 
 socket.on("game_won", (data) => {
+    logLudoEvent("game_won", `Winner: ${data.winner}`);
     document.getElementById("turnMessage").textContent = `🎉 ${data.winner} WINS! 🎉`;
     document.getElementById("gameHint").textContent = "Game Over.";
     document.getElementById("rollBtn").disabled = true;
@@ -330,6 +328,7 @@ function canTokenMove(step, dice) {
 
 function updateTokens() {
     const layer = document.getElementById("tokensLayer");
+    let spotCounts = {}; 
 
     currentPlayers.forEach(player => {
         player.tokens.forEach((step, idx) => {
@@ -347,15 +346,26 @@ function updateTokens() {
             if (coords) {
                 const row = coords[0];
                 const col = coords[1];
+                const key = `${row},${col}`;
+                
+                if (!spotCounts[key]) spotCounts[key] = 0;
+                let offsetIndex = spotCounts[key];
+                spotCounts[key]++;
+
                 tokenElement.style.top = `${row * (100 / 15)}%`;
                 tokenElement.style.left = `${col * (100 / 15)}%`;
-            }
 
-            // Shrink homed tokens & counter-rotate all tokens so shadows look right
-            if (step === 56) {
-                tokenElement.style.transform = `rotate(-${boardRotation}deg) scale(0.6) translate(${idx * 5}px, ${idx * 5}px)`;
-            } else {
-                tokenElement.style.transform = `rotate(-${boardRotation}deg) scale(1)`;
+                // VEMPI'S OVERLAP FIX: Spread tokens out if they are on the same tile
+                if (step >= 0 && step < 56 && spotCounts[key] > 1) {
+                    let shiftX = (offsetIndex * 12) - 6; 
+                    let shiftY = (offsetIndex * -12) + 6;
+                    tokenElement.style.transform = `rotate(-${boardRotation}deg) scale(0.75) translate(${shiftX}px, ${shiftY}px)`;
+                } 
+                else if (step === 56) {
+                    tokenElement.style.transform = `rotate(-${boardRotation}deg) scale(0.6) translate(${idx * 5}px, ${idx * 5}px)`;
+                } else {
+                    tokenElement.style.transform = `rotate(-${boardRotation}deg) scale(1)`;
+                }
             }
 
             tokenElement.classList.remove("selectable");
@@ -371,44 +381,102 @@ function updateTokens() {
     });
 }
 
-function selectToken(tokenIndex) {
-    if (!awaitingMyMove) return;
-    socket.emit("move_token", { room_id: currentRoom, token_index: tokenIndex });
+// QUICK CHAT LOGIC
+function sendQuickChat(msg) {
+    if(!currentRoom) return;
+    socket.emit("send_chat", { room_id: currentRoom, color: myColor, msg: msg });
+    document.getElementById("chatMenu").classList.add("hidden");
+}
+
+socket.on("receive_chat", (data) => {
+    const bubbleId = data.color === "red" ? "redChatBubble" : "yellowChatBubble";
+    const bubble = document.getElementById(bubbleId);
+    if(bubble) {
+        // Check if the message is a sticker or standard text
+        if (data.msg.startsWith("STICKER:")) {
+            const filename = data.msg.split(":")[1];
+            bubble.innerHTML = `<img src="/static/${filename}" class="chat-sticker">`;
+            bubble.style.background = "transparent"; // Remove background for stickers
+            bubble.style.boxShadow = "none";
+            bubble.style.padding = "0";
+        } else {
+            bubble.textContent = data.msg;
+            bubble.style.background = "#ffc857"; // Restore standard yellow background
+            bubble.style.boxShadow = "0 4px 10px rgba(0,0,0,0.5)";
+            bubble.style.padding = "6px 12px";
+        }
+        
+        bubble.style.opacity = "1";
+        
+        // Disappear after 2.5 seconds
+        setTimeout(() => {
+            bubble.style.opacity = "0";
+        }, 2500);
+    }
+});
+
+function buildChatMenu() {
+    const menu = document.getElementById("chatMenu");
+    menu.innerHTML = ""; // Clear it out
+    
+    // 1. Keep the standard text options
+    const texts = ["😂", "😡", "Hurry!", "Oops"];
+    texts.forEach(t => {
+        let s = document.createElement("span");
+        s.innerText = t;
+        s.onclick = () => sendQuickChat(t);
+        menu.appendChild(s);
+    });
+
+    // 2. Automatically load all 33 stickers from the static folder
+    // (Note: If your files are named something else like 'sticker1.png' or '1.gif', 
+    // change the filename string below to match!)
+    // Automatically load yaya (1).png through yaya (33).png
+    for (let i = 1; i <= 33; i++) {
+        let img = document.createElement("img");
+        // Pointing specifically to the Ya-Ya folder!
+        let filename = `yaya (${i}).png`;
+        img.src = `/static/Ya-Ya/${filename}`; 
+        img.className = "menu-sticker";
+        
+        // Pass the subfolder path in the sticker message
+        img.onclick = () => sendQuickChat(`STICKER:Ya-Ya/${filename}`);
+        menu.appendChild(img);
+    }
+}
+// Call this immediately so the menu is built when the game loads
+buildChatMenu();
+
+function toggleChat() {
+    const menu = document.getElementById("chatMenu");
+    menu.classList.toggle("hidden");
 }
 
 function updateTurnUI() {
     const isMyTurn = currentTurnColor === myColor;
     document.getElementById("rollBtn").disabled = !isMyTurn || awaitingMyMove;
     
-    document.getElementById("turnMessage").textContent = isMyTurn 
-        ? "Your turn!" 
-        : `${currentTurnColor.toUpperCase()} is playing...`;
+    if (isMyTurn && !awaitingMyMove) {
+        document.getElementById("turnMessage").textContent = "Your turn!";
+        document.getElementById("gameHint").textContent = "Tap the dice to roll.";
+    } else if (!isMyTurn) {
+        document.getElementById("turnMessage").textContent = `${currentTurnColor.toUpperCase()} is playing...`;
+        document.getElementById("gameHint").textContent = "Wait for your turn.";
+    }
     
     const diceEl = document.getElementById("dice");
     diceEl.className = `dice ${currentTurnColor}-turn`;
-    
-    if(!awaitingMyMove) {
-        document.getElementById("gameHint").textContent = isMyTurn ? "Roll the dice." : "Wait for your turn.";
-    }
 }
 
 function rollDice() {
-    if (!currentRoom) return;
-
-    // Play Dice Roll SFX
-    const diceSfx = document.getElementById("diceSound");
-    diceSfx.currentTime = 0;
-    diceSfx.play().catch(e => console.log(e));
+    if (currentTurnColor !== myColor || awaitingMyMove || !currentRoom) return;
     
-    document.getElementById("dice").classList.add("rolling");
+    // Disable immediately locally to prevent spam
     document.getElementById("rollBtn").disabled = true;
-
-    const cheatValue = document.getElementById("cheatSelect").value;
     
-    setTimeout(() => {
-        socket.emit("roll_dice", { room_id: currentRoom, cheat: cheatValue });
-        document.getElementById("cheatSelect").value = ""; 
-    }, 400); // 400ms delay matches the spinning animation
+    const cheatValue = document.getElementById("cheatSelect").value;
+    socket.emit("roll_dice", { room_id: currentRoom, cheat: cheatValue });
+    document.getElementById("cheatSelect").value = ""; 
 }
 
 // SECRETS
@@ -420,5 +488,3 @@ function unlockCheat() {
         cheatTaps = 0;
     }
 }
-
-

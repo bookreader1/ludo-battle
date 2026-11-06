@@ -217,3 +217,106 @@ button:disabled { opacity: .4; cursor: not-allowed; }
     cursor: pointer; opacity: 0.3;
 }
 .secret-cheat-dropdown:focus { opacity: 1; color: #ffc857; background: #000; }
+
+/* Vempi Fixes: Bigger Stars */
+.safe-star { 
+    color: #fff !important; 
+    font-size: clamp(20px, 6vw, 30px) !important; 
+    text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+    z-index: 5;
+}
+
+/* Quick Chat Popups */
+/* Scrollable Sticker Grid */
+.chat-menu {
+    position: absolute;
+    top: 45px;
+    right: 50px;
+    background: #171e30;
+    border: 1px solid #394763;
+    border-radius: 12px;
+    z-index: 150;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.9);
+    
+    /* FIX 1: Removed !important so the .hidden class can hide it again */
+    display: grid; 
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    
+    max-height: 250px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 270px;
+    padding: 12px;
+}
+
+/* Custom Sleek Scrollbar */
+.chat-menu::-webkit-scrollbar { width: 5px; }
+.chat-menu::-webkit-scrollbar-track { background: transparent; }
+.chat-menu::-webkit-scrollbar-thumb { background: #394763; border-radius: 10px; }
+.chat-menu::-webkit-scrollbar-thumb:hover { background: #ffc857; }
+
+/* FIX 2: Strict sizing for emojis and text blocks */
+.chat-menu span {
+    cursor: pointer;
+    font-size: 16px;
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #0d1423;
+    border-radius: 8px;
+    transition: 0.1s;
+    font-weight: bold;
+    color: #ffc857;
+}
+.chat-menu span:active { transform: scale(0.9); }
+
+/* FIX 3: Strict sizing for the stickers so they fit the grid perfectly */
+.menu-sticker {
+    width: 100%;
+    height: 50px; /* Lock the height so they don't blow up */
+    object-fit: contain; /* Keep proportions without stretching */
+    cursor: pointer;
+    transition: 0.1s;
+    background: #0d1423; /* Matching background for neatness */
+    border-radius: 8px;
+    padding: 2px;
+}
+.menu-sticker:active { transform: scale(0.85); background: #394763; }
+
+/* ROCK SOLID POPUP CONTAINER */
+.chat-popup {
+    position: absolute !important;
+    bottom: 100% !important; /* Pushes it directly above the player card */
+    top: auto !important;
+    left: 10px !important;
+    margin-bottom: 8px; /* Spacing between the bubble and the player name */
+    background: #ffc857;
+    color: #000;
+    padding: 6px 12px;
+    border-radius: 12px 12px 12px 0;
+    font-weight: bold;
+    font-size: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease-in-out;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    z-index: 200 !important;
+    white-space: nowrap; /* Keeps text bubbles in one line */
+}
+
+.yellow-player .chat-popup { 
+    border-radius: 12px 12px 0 12px; 
+    right: 10px !important; 
+    left: auto !important; 
+}
+
+/* STRICT STICKER SIZING */
+.chat-sticker {
+    width: 80px !important;
+    height: 80px !important;
+    object-fit: contain !important;
+    display: block !important;
+    filter: drop-shadow(0 5px 8px rgba(0,0,0,0.6));
+}

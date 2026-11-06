@@ -38,31 +38,42 @@
         </div>
     </section>
 
-    <!-- GAME -->
+    <!-- GAME (Classic UI Layout) -->
     <section id="gameSection" class="hidden">
 
         <div class="game-header">
             <div>
-                <!-- SECRET LOCK: Tap the title 5 times to reveal cheat -->
                 <h2 onclick="unlockCheat()" style="user-select: none;">Battle Arena</h2>
             </div>
-            <div class="room-badge">
-                ROOM <strong id="gameRoomCode">------</strong>
+            <div style="display: flex; gap: 10px; align-items: center; position: relative;">
+                
+                <!-- QUICK CHAT MENU -->
+                <!-- QUICK CHAT MENU -->
+                <div id="chatMenu" class="chat-menu hidden"></div>
+                
+                <button class="music-btn" onclick="toggleChat()" style="background: transparent; border: none; font-size: 20px; cursor: pointer;">💬</button>
+                <button id="musicBtn" onclick="toggleMusic()" style="background: transparent; border: none; font-size: 20px; cursor: pointer;">🎵</button>
+                
+                <div class="room-badge">
+                    ROOM <strong id="gameRoomCode">------</strong>
+                </div>
             </div>
         </div>
 
         <div class="player-bar">
-            <div class="player red-player">
+            <div class="player red-player" style="position: relative;">
+                <div id="redChatBubble" class="chat-popup"></div> 
                 <span class="player-dot red-dot"></span>
                 <div><strong id="redName">P1</strong></div>
             </div>
-            <div class="player yellow-player">
+            <div class="player yellow-player" style="position: relative;">
+                <div id="yellowChatBubble" class="chat-popup"></div> 
                 <span class="player-dot yellow-dot"></span>
                 <div><strong id="yellowName">P2</strong></div>
             </div>
         </div>
 
-        <!-- The board dynamically rotates so your color is always facing you -->
+        <!-- The board dynamically rotates -->
         <div class="board-frame" id="boardFrame">
             <div class="board" id="ludoBoard"></div>
             <div class="tokens-layer" id="tokensLayer"></div>
@@ -71,7 +82,7 @@
         <!-- Mobile Bottom Dock -->
         <div class="mobile-controls">
             
-            <!-- SECRET CHEAT DROPDOWN: Hidden by default -->
+            <!-- SECRET CHEAT DROPDOWN -->
             <select id="cheatSelect" class="secret-cheat-dropdown" style="display: none;">
                 <option value="">•</option>
                 <option value="1">1</option>
@@ -95,6 +106,6 @@
 </main>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script src="{{ url_for('static', filename='game.js') }}"></script>
+<script src="{{ url_for('static', filename='game.js') }}?v=4"></script>
 </body>
 </html>

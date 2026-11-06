@@ -94,6 +94,68 @@ def roll_dice(data):
 def handle_move_token(data):
     room_id = data.get("room_id")
     token_idx = data.get("token_index")
+    if token_idx is None: 
+        return
+    room = rooms.get(room_id)
+    if not room or room["status"] != "playing" or not room.get("awaiting_move"): return
+    current_player = room["players"][room["turn"]]
+    if current_player["sid"] != request.sid: return
+
+    dice = room["dice"]
+    step = current_player["tokens"][token_idx]
+
+    if step == -1:
+        if dice == 6: current_player["tokens"][token_idx] = 0
+        else: return
+    elif 0 <= step < 56:
+        if step + dice <= 56: current_player["tokens"][token_idx] += dice
+        else: return
+    else: return
+
+    room["awaiting_move"] = False
+    new_step = current_player["tokens"][token_idx]
+    captured_someone = False
+    reached_home = (new_step == 56) # Vempi's "Laal hona" rule
+
+    if 0 <= new_step < 51:
+        my_offset = 0 if current_player["color"] == "red" else 26
+        my_abs_pos = (my_offset + new_step) % 52
+        safe_spots = [0, 8, 13, 21, 26, 34, 39, 47]
+        
+        if my_abs_pos not in safe_spots:
+            for p in room["players"]:
+                if p["sid"] != current_player["sid"]:
+                    enemy_offset = 0 if p["color"] == "red" else 26
+                    for i, e_step in enumerate(p["tokens"]):
+                        if 0 <= e_step < 51:
+                            enemy_abs_pos = (enemy_offset + e_step) % 52
+                            if enemy_abs_pos == my_abs_pos:
+                                p["tokens"][i] = -1 
+                                captured_someone = True
+
+    if all(s == 56 for s in current_player["tokens"]):
+        room["status"] = "finished"
+        socketio.emit("game_won", {"winner": current_player["name"]}, to=room_id)
+        return
+
+    # VEMPI'S FIX: Extra turn if you roll 6, capture someone, or reach home (laal)
+    if dice != 6 and not captured_someone and not reached_home:
+        room["turn"] = (room["turn"] + 1) % len(room["players"])
+
+    next_player = room["players"][room["turn"]]
+    socketio.emit("board_updated", {
+        "players": room["players"],
+        "next_turn_color": next_player["color"],
+        "next_turn_name": next_player["name"]
+    }, to=room_id)
+
+# NEW: Quick Chat Engine
+@socketio.on("send_chat")
+def handle_chat(data):
+    room_id = data.get("room_id")
+    socketio.emit("receive_chat", {"color": data["color"], "msg": data["msg"]}, to=room_id)
+    room_id = data.get("room_id")
+    token_idx = data.get("token_index")
     room = rooms.get(room_id)
     if not room or room["status"] != "playing" or not room.get("awaiting_move"): return
     current_player = room["players"][room["turn"]]
